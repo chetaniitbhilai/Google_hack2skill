@@ -1,5 +1,5 @@
 import subprocess
-subprocess.run(["pip", "install", "flask"])
+subprocess.run(["pip", "install", "Flask"])
 
 
 from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory

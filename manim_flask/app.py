@@ -1,7 +1,10 @@
+import subprocess
+subprocess.run(["pip", "install", "flask"])
+
+
 from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
 import uuid
 import os
-import subprocess
 from threading import Thread
 import time
 import sys

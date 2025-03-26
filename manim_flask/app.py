@@ -111,4 +111,5 @@ def download(video_id):
         as_attachment=True
     )
 if __name__ == '__main__':
-    app.run(debug=False, use_reloader=False, port = 5000)  # Change this line
+    port = int(os.environ.get('PORT', 5000))  # Default to 5000 if no PORT is set
+    app.run(debug=False, use_reloader=False, port = port)  # Change this line

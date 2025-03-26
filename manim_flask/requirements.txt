@@ -105,6 +105,7 @@ filelock
 filterpy==1.4.5
 fire==0.7.0
 flake8
+Flask
 flask
 flask-cors==5.0.1
 flatbuffers==25.1.24

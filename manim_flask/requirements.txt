@@ -59,7 +59,6 @@ proto-plus==1.26.1
 protobuf==5.29.4
 pyasn1==0.6.1
 pyasn1_modules==0.4.1
-pycairo==1.27.0
 pydantic==2.10.6
 pydantic_core==2.27.2
 pydub==0.25.1

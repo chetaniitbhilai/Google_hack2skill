@@ -8,7 +8,6 @@ aioitertools
 aiosignal
 alabaster
 altair
-anaconda-anon-usage
 anaconda-catalogs
 anaconda-client
 anaconda-cloud-auth
@@ -106,7 +105,6 @@ filterpy==1.4.5
 fire==0.7.0
 flake8
 Flask
-streamlit==1.32.0
 flask-cors==5.0.1
 flatbuffers==25.1.24
 flax==0.10.2

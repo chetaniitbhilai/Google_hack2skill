@@ -1,0 +1,27 @@
+# Use the official Manim Community image as the base
+FROM manimcommunity/manim
+
+# Set the working directory
+WORKDIR /manim
+
+EXPOSE 8000
+
+# Switch to root user to install packages
+USER root
+
+# Install required packages (sox, libsox-fmt-all)
+RUN apt-get update && \
+    apt-get clean && \
+
+
+
+# Install the required Python packages
+RUN pip install --no-cache-dir google-genai && \
+    pip install --no-cache-dir --upgrade "manim-voiceover[azure,gtts]" &&  \
+    pip install flask
+
+# Set the default user to the current user's ID and group ID
+USER ${UID}:${GID}
+
+# Default command (optional, could be overwritten at runtime)
+CMD ["manim"]

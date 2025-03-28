@@ -1,46 +1,30 @@
-from flask import Flask, render_template, request, redirect, url_for, session, send_from_directory
+from flask import Flask, render_template, request, jsonify, session, send_from_directory, redirect, url_for
 import uuid
 import os
 from threading import Thread
-import time
+import subprocess
 import sys
-
-import logging
-
-log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR)  
 
 app = Flask(__name__)
 app.secret_key = '12345'
 
-UPLOAD_FOLDER = 'uploads'
+UPLOAD_FOLDER = 'media/uploads'
 PROCESSED_FOLDER = 'media/videos'
-ALLOWED_EXTENSIONS = {'webm', 'mp4'}
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-app.config['PROCESSED_FOLDER'] = PROCESSED_FOLDER
-
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(PROCESSED_FOLDER, exist_ok=True)
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def process_video(upload_id):
+def process_video(video_url, upload_id):
     try:
-        input_path = os.path.abspath(os.path.join(app.config['UPLOAD_FOLDER'], f'{upload_id}.webm'))
-        output_path = os.path.abspath(os.path.join(app.config['PROCESSED_FOLDER'], f'{upload_id}.mp4'))
+        output_path = os.path.abspath(os.path.join(PROCESSED_FOLDER, f'{upload_id}.mp4'))
         
-        # Run script with explicit Python executable
         process = subprocess.Popen(
-            [sys.executable, 'script-code.py', input_path],  # Use sys.executable
+            [sys.executable, 'script-code.py', video_url],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            cwd=os.getcwd()  # Set working directory explicitly
+            cwd=os.getcwd()
         )
         
-        # Read output in real-time
         while True:
             output = process.stdout.readline()
             if output == '' and process.poll() is not None:
@@ -48,9 +32,7 @@ def process_video(upload_id):
             if output:
                 print(f"[PROCESSING LOG] {output.strip()}")
         
-        # Add explicit completion check
         if process.returncode == 0:
-            print("Processing completed successfully")
             generated_path = os.path.abspath(os.path.join('media', 'videos', 'GeneratedScene.mp4'))
             if os.path.exists(generated_path):
                 os.rename(generated_path, output_path)
@@ -60,37 +42,34 @@ def process_video(upload_id):
         print(f"Error processing video: {str(e)}")
         return False
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 def index():
-    if request.method == 'POST':
-        if 'video' not in request.files:
-            return redirect(request.url)
-        file = request.files['video']
-        if file.filename == '':
-            return redirect(request.url)
-        if file and allowed_file(file.filename):
-            upload_id = str(uuid.uuid4())
-            filename = f'{upload_id}.webm'
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            
-            session['upload_id'] = upload_id
-            session['processing'] = True
-            
-            thread = Thread(target=process_video, args=(upload_id,))
-            thread.start()
-            
-            return redirect(url_for('processing'))
     return render_template('index.html')
 
-@app.route('/processing')
-def processing():
-    return render_template('processing.html')
+@app.route('/process', methods=['POST'])
+def process():
+    data = request.get_json()
+    video_url = data.get('video_url')
 
-@app.route('/check_status')
+    if not video_url:
+        return jsonify({'error': 'No video URL provided'}), 400
+    
+    print(f"Received video URL: {video_url}")
+
+    upload_id = str(uuid.uuid4())
+    session['upload_id'] = upload_id
+    session['processing'] = True
+    
+    thread = Thread(target=process_video, args=(video_url, upload_id))
+    thread.start()
+    
+    return jsonify({'message': 'Processing started', 'upload_id': upload_id})
+
+@app.route('/check_status', methods=['GET'])
 def check_status():
     upload_id = session.get('upload_id')
     if upload_id:
-        output_path = os.path.join(app.config['PROCESSED_FOLDER'], f'{upload_id}.mp4')
+        output_path = os.path.join(PROCESSED_FOLDER, f'{upload_id}.mp4')
         if os.path.exists(output_path):
             session['processing'] = False
             return {'status': 'complete'}
@@ -105,11 +84,7 @@ def result():
 
 @app.route('/download/<video_id>')
 def download(video_id):
-    return send_from_directory(
-        app.config['PROCESSED_FOLDER'],
-        f'{video_id}.mp4',
-        as_attachment=True
-    )
+    return send_from_directory(PROCESSED_FOLDER, f'{video_id}.mp4', as_attachment=True)
+
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 10000))  # Default to 5000 if no PORT is set
-    app.run(host='0.0.0.0',debug=False, use_reloader=False, port = port)  # Change this line
+    app.run(host='0.0.0.0', port=8000, debug=False, use_reloader=False)

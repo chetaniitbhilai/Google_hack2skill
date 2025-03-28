@@ -179,7 +179,11 @@ def download_audio(youtube_url, output_path="./"):
 #   pip install google-generativeai
 
 import google.generativeai as genai
+
+# from google.generativeai.types import Content, Part, FileData
 # from google import genai
+# from google.generativeai.types import Content, Part, FileData
+import google.generativeai.types as types
 
 # Configure the API key (there's no Client class in the new version)
 API_KEY = "AIzaSyDNQ3uLiUTQVljD8Cj5vAAB1HLnk2FQnU4"
@@ -191,52 +195,91 @@ from google.generativeai import files
 #############################################
 # Section 3: Video File Processing and Transcription
 #############################################
-def process_video(video_path):
-    """
-    Uploads a video file, waits for processing, and returns the file object.
-    """
-    print("Uploading file:", video_path)
+# def process_video(video_path):
+#     """
+#     Uploads a video file, waits for processing, and returns the file object.
+#     """
+#     print("Uploading file:", video_path)
     
-    # Correct file upload method
-    video_file = genai.upload_file(path=video_path)
+#     # Correct file upload method
+#     video_file = genai.upload_file(path=video_path)
     
-    print(f"Completed upload: {video_file.uri}")
-    print("File metadata:", video_file.video_metadata)
+#     print(f"Completed upload: {video_file.uri}")
+#     print("File metadata:", video_file.video_metadata)
     
-    # Wait for processing
-    print("Waiting for processing", end='')
-    while video_file.state.name == "PROCESSING":
-        print('.', end='', flush=True)
-        time.sleep(5)
-        video_file = genai.get_file(video_file.name)
+#     # Wait for processing
+#     print("Waiting for processing", end='')
+#     while video_file.state.name == "PROCESSING":
+#         print('.', end='', flush=True)
+#         time.sleep(5)
+#         video_file = genai.get_file(video_file.name)
     
-    if video_file.state.name != "ACTIVE":
-        raise ValueError(f"Video processing failed with state: {video_file.state.name}")
+#     if video_file.state.name != "ACTIVE":
+#         raise ValueError(f"Video processing failed with state: {video_file.state.name}")
     
-    print("\nFile processing completed successfully")
-    return video_file
+#     print("\nFile processing completed successfully")
+#     return video_file
 
-def transcribe_video(video_file):
+def process_video(youtube_url):
     """
-    Generates a transcription for the given video file using a Gemini model.
+    Processes a YouTube video URL by passing it directly to Gemini for analysis.
+    Extracts mathematical content written on sheets of paper and formats it as XML.
     """
+    print("Processing YouTube video:", youtube_url)
+
+    # Define the transcription prompt
     prompt2vid2text = '''This is a video of a teacher explaining mathematical concepts on sheets of paper. 
-Your task is to extract and transcribe the exact content written on each sheet.
-Guidelines:
-- Use LaTeX for mathematical symbols.
-- Do not add any extra explanation.
-- Provide the output in the following XML-like format:
-<content>
-    <slide1>Extracted content from Slide 1</slide1>
-    <slide2>Extracted content from Slide 2</slide2>
-    <slide3>Extracted content from Slide 3</slide3>
-    ...
-</content>'''
-    model = genai.GenerativeModel("gemini-1.5-pro")
-    response = model.generate_content(contents=[video_file, prompt2vid2text])
-    print("Transcription response:")
+    Your task is to extract and transcribe the exact content written on each sheet.
+    Guidelines:
+    - Use LaTeX for mathematical symbols.
+    - Do not add any extra explanation.
+    - Provide the output in the following XML-like format:
+    <content>
+        <slide1>Extracted content from Slide 1</slide1>
+        <slide2>Extracted content from Slide 2</slide2>
+        <slide3>Extracted content from Slide 3</slide3>
+        ...
+    </content>'''
+
+    # Generate transcription using Gemini model
+    model = genai.GenerativeModel('gemini-1.5-flash')  # Use latest model if available
+
+    response = model.generate_content([
+        {"text": prompt2vid2text},
+        {"file_data": {"file_uri": youtube_url}}
+    ])
+
+    if not response or not response.text:
+        raise ValueError("Failed to process video or no response received.")
+
+    # Print and return response in XML format
+    print("Processing completed successfully.")
     print(response.text)
-    return response.text
+    return response.text  # Returning the transcription in XML format
+
+
+
+# def transcribe_video(video_file):
+#         """
+#         Generates a transcription for the given video file using a Gemini model.
+#         """
+#         prompt2vid2text = '''This is a video of a teacher explaining mathematical concepts on sheets of paper. 
+#     Your task is to extract and transcribe the exact content written on each sheet.
+#     Guidelines:
+#     - Use LaTeX for mathematical symbols.
+#     - Do not add any extra explanation.
+#     - Provide the output in the following XML-like format:
+#     <content>
+#         <slide1>Extracted content from Slide 1</slide1>
+#         <slide2>Extracted content from Slide 2</slide2>
+#         <slide3>Extracted content from Slide 3</slide3>
+#         ...
+#     </content>'''
+#         model = genai.GenerativeModel("gemini-1.5-pro")
+#         response = model.generate_content(contents=[video_file, prompt2vid2text])
+#         print("Transcription response:")
+#         print(response.text)
+#         return response.text
 
 #############################################
 # Section 4: Generate Structured JSON for Manim
@@ -278,11 +321,11 @@ def main():
     if len(sys.argv) < 2:
         print("Usage: python3 script-code.py <video_file>")
         sys.exit(1)
-    video_path = sys.argv[1]
+    video_url = sys.argv[1]
     
     # Process video and get transcription
-    video_file = process_video(video_path)
-    transcription_text = transcribe_video(video_file)
+    transcription_text = process_video(video_url)
+    # transcription_text = transcribe_video(video_file)
     
     # Extract slide content from transcription
     slides = extract_slide_content(transcription_text)
